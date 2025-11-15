@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { chunkFile, calculateTransferTime, findShortestPath, createBlock } from '@/utils/simulation';
 import { toast } from 'sonner';
 import { Activity, Circle } from 'lucide-react';
+import TransferLogSidebar from '@/components/TransferLogSidebar';
 
 const Index = () => {
   const [mode, setMode] = useState<'simulation' | 'real'>('simulation');
@@ -278,6 +279,9 @@ const Index = () => {
           </div>
         </div>
       </Card>
+
+      {/* Transfer log sidebar (collapsible) */}
+      <TransferLogSidebar blocks={blockchain} />
 
       {mode === 'simulation' ? (
         <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
