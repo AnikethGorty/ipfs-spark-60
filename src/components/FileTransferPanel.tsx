@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -11,17 +11,31 @@ interface FileTransferPanelProps {
   nodes: NetworkNode[];
   onStartTransfer: (file: File, sourceId: string, destId: string, chunkSize: number) => void;
   isSimulating: boolean;
+
+  // NEW PROP ✔
+  selectedSourceNode: string | null;
 }
 
 export const FileTransferPanel = ({
   nodes,
   onStartTransfer,
   isSimulating,
+  selectedSourceNode,   // ← NEW
 }: FileTransferPanelProps) => {
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sourceNode, setSourceNode] = useState<string>('');
   const [destNode, setDestNode] = useState<string>('');
   const [chunkSize, setChunkSize] = useState<number>(256);
+
+  /* ------------------------------------------
+     AUTO-UPDATE SOURCE NODE WHEN CLICKED IN GRAPH
+  ------------------------------------------- */
+  useEffect(() => {
+    if (selectedSourceNode) {
+      setSourceNode(selectedSourceNode);
+    }
+  }, [selectedSourceNode]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -36,7 +50,12 @@ export const FileTransferPanel = ({
     onStartTransfer(selectedFile, sourceNode, destNode, chunkSize * 1024);
   };
 
-  const canTransfer = selectedFile && sourceNode && destNode && sourceNode !== destNode && !isSimulating;
+  const canTransfer =
+    selectedFile &&
+    sourceNode &&
+    destNode &&
+    sourceNode !== destNode &&
+    !isSimulating;
 
   return (
     <Card className="p-4 space-y-4 bg-card border-border">
@@ -48,15 +67,13 @@ export const FileTransferPanel = ({
       <div className="space-y-3">
         <div>
           <Label htmlFor="fileInput">Select File</Label>
-          <div className="mt-1">
-            <Input
-              id="fileInput"
-              type="file"
-              onChange={handleFileSelect}
-              disabled={isSimulating}
-              className="cursor-pointer"
-            />
-          </div>
+          <Input
+            id="fileInput"
+            type="file"
+            onChange={handleFileSelect}
+            disabled={isSimulating}
+            className="cursor-pointer mt-1"
+          />
           {selectedFile && (
             <p className="text-xs text-muted-foreground mt-1">
               {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
