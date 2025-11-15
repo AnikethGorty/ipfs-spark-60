@@ -50,7 +50,6 @@ const Index = () => {
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // Auto-selected source node for transfers
   const [selectedSourceNode, setSelectedSourceNode] = useState<string | null>(null);
 
   /* -----------------------------------------------------
@@ -96,6 +95,10 @@ const Index = () => {
       setConnections(data.connections);
       setBlockchain(data.blockchain || []);
 
+      setSelectedNode(null);
+      setSelectedConnection(null);
+      setSelectedSourceNode(null);
+
       toast.success("Simulation loaded!");
     } catch (err) {
       console.error(err);
@@ -115,13 +118,13 @@ const Index = () => {
     setNodes(prev => prev.filter(n => n.id !== id));
     setConnections(prev => prev.filter(c => c.source !== id && c.target !== id));
     setSelectedNode(null);
-    toast.success('Node removed');
+    toast.success("Node removed");
   }, []);
 
   const handleRemoveConnection = useCallback((id: string) => {
     setConnections(prev => prev.filter(c => c.id !== id));
     setSelectedConnection(null);
-    toast.success('Connection removed');
+    toast.success("Connection removed");
   }, []);
 
   const handleUpdateConnection = useCallback((connection: NetworkConnection) => {
@@ -146,9 +149,7 @@ const Index = () => {
         );
 
         const link = connections.find(
-          c =>
-            (c.source === from && c.target === to) ||
-            (c.source === to && c.target === from)
+          c => (c.source === from && c.target === to) || (c.source === to && c.target === from)
         );
         if (!link) continue;
 
@@ -207,31 +208,13 @@ const Index = () => {
       setIsSimulating(false);
     }
   };
-  
-    // --- Restore state ---
-    setNodes(data.nodes);
-    setConnections(data.connections);
-    setBlockchain(data.blockchain || []);
-
-    // Clear selections
-    setSelectedNode(null);
-    setSelectedConnection(null);
-    setSelectedSourceNode(null);
-
-    toast.success("Simulation loaded successfully!");
-  } catch (error) {
-    toast.error("Failed to load file");
-    console.error(error);
-  }
-};
-
 
   /* -----------------------------------------------------
         UI RENDER
   ----------------------------------------------------- */
   return (
     <div className="min-h-screen bg-background p-4">
-
+      
       <Card className="mb-4 p-4 bg-card border-border">
         <div className="flex items-center justify-between">
           <div>
@@ -242,11 +225,8 @@ const Index = () => {
           </div>
 
           <div className="flex gap-2">
-
-            {/* Save */}
             <Button onClick={handleSaveSimulation}>Save</Button>
 
-            {/* Load */}
             <label>
               <input
                 type="file"
@@ -257,7 +237,6 @@ const Index = () => {
               <Button variant="outline">Load</Button>
             </label>
 
-            {/* Mode toggles */}
             <Button
               variant={mode === 'simulation' ? 'default' : 'outline'}
               onClick={() => setMode('simulation')}
@@ -275,7 +254,6 @@ const Index = () => {
               <Circle className="h-4 w-4 mr-2" />
               Real Mode
             </Button>
-
           </div>
         </div>
       </Card>
@@ -312,7 +290,6 @@ const Index = () => {
           </div>
 
           <div className="col-span-3 flex flex-col gap-4 overflow-auto">
-
             <FileTransferPanel
               nodes={nodes}
               onStartTransfer={handleStartTransfer}
@@ -328,7 +305,6 @@ const Index = () => {
             <div className="flex-1 min-h-0">
               <BlockchainPanel blocks={blockchain} />
             </div>
-
           </div>
 
         </div>
