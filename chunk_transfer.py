@@ -4,7 +4,7 @@ Basic Chunk Transfer Logic Module
 This module provides utilities for file chunking, hashing, and transfer simulation
 in a network topology. It can be integrated with the main simulation system.
 
-Author: IPFS Network Simulator
+Author: IPFS Network Simulator (edited)
 Date: 2025
 """
 
@@ -12,220 +12,146 @@ import hashlib
 import time
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
+import os
+import math
+import heapq
+
+CHUNK_SIZE_DEFAULT = 1024 * 64  # 64 KiB
 
 
 @dataclass
-class FileChunk:
-    """Represents a chunk of a file"""
-    id: int
+class Chunk:
+    index: int
     data: bytes
-    hash: str
     size: int
+    hash: str
 
 
-@dataclass
-class NetworkNode:
-    """Represents a network node"""
-    id: str
-    label: str
-    status: str  # 'online', 'offline', 'transferring'
-
-
-@dataclass
-class NetworkConnection:
-    """Represents a connection between two nodes"""
-    id: str
-    name: str
-    source: str
-    target: str
-    connection_type: str  # 'wired' or 'wireless'
-    latency: float  # milliseconds
-    bandwidth: float  # Mbps
-    packet_loss: float  # 0-1
-    distance: float  # meters
-
-
-def chunk_file(file_path: str, chunk_size: int = 256 * 1024) -> List[FileChunk]:
-    """
-    Split a file into chunks and compute hash for each chunk
-    
-    Args:
-        file_path: Path to the file to chunk
-        chunk_size: Size of each chunk in bytes (default 256KB)
-    
-    Returns:
-        List of FileChunk objects
-    """
-    chunks = []
-    chunk_id = 0
-    
-    with open(file_path, 'rb') as f:
+def chunk_file(path: str, chunk_size: int = CHUNK_SIZE_DEFAULT) -> List[Chunk]:
+    """Read a file and split into chunks of chunk_size bytes."""
+    chunks: List[Chunk] = []
+    idx = 0
+    with open(path, "rb") as f:
         while True:
             data = f.read(chunk_size)
             if not data:
                 break
-            
-            # Compute SHA256 hash
-            hash_obj = hashlib.sha256(data)
-            chunk_hash = hash_obj.hexdigest()
-            
-            chunk = FileChunk(
-                id=chunk_id,
-                data=data,
-                hash=chunk_hash,
-                size=len(data)
-            )
-            chunks.append(chunk)
-            chunk_id += 1
-    
+            h = hashlib.sha256(data).hexdigest()
+            chunks.append(Chunk(index=idx, data=data, size=len(data), hash=h))
+            idx += 1
     return chunks
 
 
-def calculate_transfer_time(
-    chunk_size: int,
-    bandwidth: float,
-    latency: float,
-    packet_loss: float
-) -> float:
-    """
-    Calculate transfer time for a chunk based on network properties
-    
-    Args:
-        chunk_size: Size of chunk in bytes
-        bandwidth: Connection bandwidth in Mbps
-        latency: Connection latency in milliseconds
-        packet_loss: Packet loss rate (0-1)
-    
-    Returns:
-        Transfer time in milliseconds
-    """
-    # Convert chunk size to megabits
-    chunk_size_mb = (chunk_size * 8) / (1024 * 1024)
-    
-    # Base transfer time
-    transfer_time = (chunk_size_mb / bandwidth) * 1000 + latency
-    
-    # Account for packet loss (simple retry simulation)
-    if packet_loss > 0:
-        import random
-        if random.random() < packet_loss:
-            retries = random.randint(1, 3)
-            transfer_time *= (1 + retries)
-    
-    return transfer_time
+def hash_chunk(data: bytes) -> str:
+    """Return the SHA256 hex digest for the chunk bytes."""
+    return hashlib.sha256(data).hexdigest()
 
 
-def find_shortest_path(
-    nodes: List[NetworkNode],
-    connections: List[NetworkConnection],
-    start_id: str,
-    end_id: str
-) -> List[str]:
+def estimate_transfer_time(bytes_count: int, bandwidth_kbps: float, latency_ms: float = 0.0) -> float:
     """
-    Find shortest path between two nodes using Dijkstra's algorithm
-    
-    Args:
-        nodes: List of network nodes
-        connections: List of network connections
-        start_id: Starting node ID
-        end_id: Destination node ID
-    
-    Returns:
-        List of node IDs representing the path
+    Estimate transfer time in seconds given bytes_count, bandwidth in kilobits/sec, and latency in ms.
+    bandwidth_kbps: kilobits per second (not kilobytes).
     """
-    # Initialize distances and previous nodes
-    distances = {node.id: float('inf') for node in nodes}
-    previous = {node.id: None for node in nodes}
-    distances[start_id] = 0
-    
-    unvisited = set(node.id for node in nodes)
-    
-    while unvisited:
-        # Find node with minimum distance
-        current = min(unvisited, key=lambda node_id: distances[node_id])
-        
-        if current == end_id:
-            break
-            
-        if distances[current] == float('inf'):
-            break
-            
-        unvisited.remove(current)
-        
-        # Update distances to neighbors
-        for conn in connections:
-            neighbor = None
-            if conn.source == current and conn.target in unvisited:
-                neighbor = conn.target
-            elif conn.target == current and conn.source in unvisited:
-                neighbor = conn.source
-            
-            if neighbor:
-                # Weight = latency + 1/bandwidth (simplified cost)
-                weight = conn.latency + (1000 / conn.bandwidth)
-                alt_distance = distances[current] + weight
-                
-                if alt_distance < distances[neighbor]:
-                    distances[neighbor] = alt_distance
-                    previous[neighbor] = current
-    
-    # Reconstruct path
-    path = []
-    current = end_id
-    while current is not None:
-        path.insert(0, current)
-        current = previous[current]
-    
-    # Return path only if valid (starts at start_id)
-    if path and path[0] == start_id:
-        return path
-    return []
+    if bandwidth_kbps <= 0:
+        raise ValueError("bandwidth_kbps must be > 0")
+    bits = bytes_count * 8
+    seconds_for_bits = bits / (bandwidth_kbps * 1000.0)
+    # simple model: time = latency + transmission
+    return (latency_ms / 1000.0) + seconds_for_bits
 
 
-def simulate_chunk_transfer(
-    chunk: FileChunk,
-    connection: NetworkConnection
-) -> Dict:
+def simulate_chunk_transfer(chunk: Chunk, bandwidth_kbps: float, latency_ms: float = 0.0, sleep: bool = True) -> float:
     """
-    Simulate the transfer of a single chunk over a connection
-    
-    Args:
-        chunk: The chunk to transfer
-        connection: The connection to use
-    
-    Returns:
-        Dictionary with transfer details
+    Simulate transfer of a single chunk. Returns simulated elapsed seconds.
+    If sleep is True, actually sleeps to simulate time passing (useful for demos).
     """
-    transfer_time = calculate_transfer_time(
-        chunk.size,
-        connection.bandwidth,
-        connection.latency,
-        connection.packet_loss
-    )
-    
+    t = estimate_transfer_time(chunk.size, bandwidth_kbps, latency_ms)
+    if sleep and t > 0:
+        time.sleep(t)
+    return t
+
+
+def simulate_transfer(chunks: List[Chunk], bandwidth_kbps: float, latency_ms: float = 0.0, parallelism: int = 1, sleep: bool = True) -> Dict:
+    """
+    Simulate transferring a list of chunks with a given bandwidth and parallelism.
+    Returns statistics including total_time, per_chunk times, throughput (bytes/sec).
+    This is a simplistic simulator and assumes bandwidth is evenly split among parallel transfers.
+    """
+    if parallelism < 1:
+        parallelism = 1
+    per_stream_bandwidth = bandwidth_kbps / parallelism
+    per_chunk_times = []
+    start = time.time()
+    # naive simulation: process chunks in 'parallelism' groups
+    active = []
+    for chunk in chunks:
+        t = estimate_transfer_time(chunk.size, per_stream_bandwidth, latency_ms)
+        per_chunk_times.append({"index": chunk.index, "time_s": t, "size": chunk.size})
+        if sleep and t > 0:
+            time.sleep(t)
+    end = time.time()
+    total_time = end - start
+    total_bytes = sum(c.size for c in chunks)
+    throughput = total_bytes / total_time if total_time > 0 else float('inf')
     return {
-        'chunk_id': chunk.id,
-        'chunk_hash': chunk.hash,
-        'from': connection.source,
-        'to': connection.target,
-        'connection_name': connection.name,
-        'transfer_time_ms': transfer_time,
-        'timestamp': time.time()
+        "total_time_s": total_time,
+        "total_bytes": total_bytes,
+        "throughput_Bps": throughput,
+        "per_chunk": per_chunk_times,
+        "chunks_count": len(chunks),
     }
 
 
+def dijkstra_shortest_path(graph: Dict[int, List[Tuple[int, float]]], start: int, goal: int) -> Tuple[float, List[int]]:
+    """
+    Simple Dijkstra shortest path.
+    graph: node -> list of (neighbor, weight)
+    Returns (distance, path list)
+    """
+    dist = {start: 0.0}
+    prev = {}
+    pq = [(0.0, start)]
+    visited = set()
+
+    while pq:
+        d, node = heapq.heappop(pq)
+        if node in visited:
+            continue
+        visited.add(node)
+        if node == goal:
+            break
+        for nbr, w in graph.get(node, []):
+            nd = d + w
+            if nd < dist.get(nbr, float('inf')):
+                dist[nbr] = nd
+                prev[nbr] = node
+                heapq.heappush(pq, (nd, nbr))
+
+    if goal not in dist:
+        return (float('inf'), [])
+    # reconstruct path
+    path = []
+    cur = goal
+    while cur != start:
+        path.append(cur)
+        cur = prev[cur]
+    path.append(start)
+    path.reverse()
+    return (dist[goal], path)
+
+
 def main():
-    """
-    Example usage of the chunk transfer module
-    """
-    print("Chunk Transfer Logic Module")
-    print("=" * 50)
-    print("\nThis module provides basic utilities for:")
-    print("- File chunking and hashing")
-    print("- Transfer time calculation")
-    print("- Shortest path finding")
-    print("- Chunk transfer simulation")
-    print("\nIntegrate this module with your network simulator.")
+    print("chunk_transfer module - self test")
+    # create a small temp file to demonstrate chunking
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    tmp.write(b"A" * 200000)  # 200 KB
+    tmp.close()
+    chunks = chunk_file(tmp.name, chunk_size=65536)
+    print(f"Created {len(chunks)} chunks")
+    stats = simulate_transfer(chunks, bandwidth_kbps=1024, latency_ms=20, parallelism=2, sleep=False)
+    print("Simulation stats:", stats)
+    os.unlink(tmp.name)
 
 
 if __name__ == "__main__":
