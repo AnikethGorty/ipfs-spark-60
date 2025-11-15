@@ -349,7 +349,7 @@ const Index = () => {
       className="glow-secondary"
       onClick={() => {
         try {
-          window.open("realmode://start");
+          window.open("real_mode://start");
         } catch (e) {
           toast.error("Unable to launch real mode handler.");
         }
