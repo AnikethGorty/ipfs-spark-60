@@ -4,37 +4,33 @@ import threading
 import json
 from flask import Flask, request, jsonify
 import psutil
-from zeroconf import Zeroconf, ServiceInfo
+from zeroconf import Zeroconf, ServiceInfo, InterfaceChoice
 import time
 
 app = Flask(__name__)
 
 # -----------------------------------------------------
-# Helper: pick a REAL LAN/WiFi IP (avoid VM + 169.254)
+# Select a REAL IPv4 LAN/WiFi IP (avoid VirtualBox etc.)
 # -----------------------------------------------------
 def get_real_ip():
-    bad_keywords = ["Virtual", "VMware", "vEthernet", "Loopback", "Bluetooth", "WSL"]
+    bad_ifaces = ["Virtual", "VMware", "vEthernet", "Loopback", "Bluetooth", "WSL"]
+
     for name, addrs in psutil.net_if_addrs().items():
-        if any(bad in name for bad in bad_keywords):
+        if any(bad in name for bad in bad_ifaces):
             continue
 
         for a in addrs:
             if a.family.name == "AF_INET":
                 ip = a.address
-
-                # Ignore APIPA ranges (169.254.x.x)
                 if ip.startswith("169.254."):
-                    continue
-
-                # Good IP found
+                    continue  # skip APIPA
                 return ip
 
-    # Fallback
     return "127.0.0.1"
 
 
 # -----------------------------
-# Metrics endpoint
+# Metrics
 # -----------------------------
 def get_metrics():
     try:
@@ -71,31 +67,35 @@ def get_metrics():
 
 
 # -----------------------------
-# Zeroconf (mDNS)
+# Zeroconf (forced to correct IP)
 # -----------------------------
 zc = None
 service_info = None
 
 def advertise_service(port: int):
     global zc, service_info
+
     try:
         ip = get_real_ip()
         hostname = socket.gethostname()
-        name = f"ipfs-spark-node-{hostname}-{port}"
+        service_name = f"ipfs-spark-node-{hostname}-{port}"
 
-        zc = Zeroconf()
+        # Force zeroconf to bind to ONLY the chosen interface
+        zc = Zeroconf(interfaces=[ip], interface_choice=InterfaceChoice.Manual)
+
         info = ServiceInfo(
             "_http._tcp.local.",
-            f"{name}._http._tcp.local.",
+            f"{service_name}._http._tcp.local.",
             addresses=[socket.inet_aton(ip)],
             port=port,
             properties={'path': '/'},
-            server=f"{hostname}.local."
+            server=f"{hostname}.local.",
         )
 
         zc.register_service(info)
         service_info = info
-        print(f"[agent] Advertising as {hostname} on {ip}:{port}")
+
+        print(f"[agent] Advertising on {ip}:{port}")
 
     except Exception as e:
         print(f"[agent] Zeroconf failed: {e}")
@@ -112,7 +112,7 @@ def stop_advertise():
 
 
 # -----------------------------
-# Flask endpoints
+# Flask Endpoints
 # -----------------------------
 @app.route("/metrics", methods=["GET"])
 def metrics():
