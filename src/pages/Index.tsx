@@ -325,6 +325,7 @@ const Index = () => {
             <NodeDetailsPanel
               selectedNode={selectedNode}
               blockchain={blockchain}
+              nodes={nodes}
             />
 
             <div className="flex-1 min-h-0">

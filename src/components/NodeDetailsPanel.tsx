@@ -1,10 +1,21 @@
 import { Card } from "@/components/ui/card";
+import { NetworkNode, Block } from '@/types/network';
 
-export const NodeDetailsPanel = ({ selectedNode, blockchain }) => {
+interface NodeDetailsPanelProps {
+  selectedNode: string | null;
+  blockchain: Block[];
+  nodes: NetworkNode[];
+}
+
+export const NodeDetailsPanel = ({ selectedNode, blockchain, nodes }: NodeDetailsPanelProps) => {
   if (!selectedNode) return null;
 
-  const sentChunks = blockchain.filter(b => b.from === selectedNode);
-  const receivedChunks = blockchain.filter(b => b.to === selectedNode);
+  const node = nodes.find(n => n.id === selectedNode);
+  const label = node?.label;
+
+  // Match blocks where the from/to equals either the node id or the node label
+  const sentChunks = blockchain.filter(b => b.from === selectedNode || b.from === label);
+  const receivedChunks = blockchain.filter(b => b.to === selectedNode || b.to === label);
 
   const sentFiles = [...new Set(sentChunks.map(b => b.fileName))];
   const receivedFiles = [...new Set(receivedChunks.map(b => b.fileName))];
@@ -12,7 +23,7 @@ export const NodeDetailsPanel = ({ selectedNode, blockchain }) => {
   return (
     <Card className="p-4 space-y-3 bg-card border-border">
       <h3 className="text-lg font-bold text-foreground">
-        Node Details: {selectedNode}
+        Node Details: {node ? node.label : selectedNode}
       </h3>
 
       <div>
