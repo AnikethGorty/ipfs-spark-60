@@ -86,23 +86,38 @@ const Index = () => {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      if (!data.nodes || !data.connections) {
-        toast.error("Invalid simulation file");
+      const nodesData = data.nodes;
+      const connectionsData = data.connections;
+
+      if (!Array.isArray(nodesData) || !Array.isArray(connectionsData)) {
+        toast.error("Invalid simulation file: missing nodes or connections array");
         return;
       }
 
-      setNodes(data.nodes);
-      setConnections(data.connections);
-      setBlockchain(data.blockchain || []);
+      // Apply environment exactly as provided in the file where possible
+      setNodes(nodesData);
+      setConnections(connectionsData);
+      setBlockchain(Array.isArray(data.blockchain) ? data.blockchain : []);
 
-      setSelectedNode(null);
-      setSelectedConnection(null);
-      setSelectedSourceNode(null);
+      // Apply optional UI/state fields if provided
+      setSelectedNode(typeof data.selectedNode === 'string' ? data.selectedNode : null);
+      setSelectedConnection(typeof data.selectedConnection === 'string' ? data.selectedConnection : null);
+      setSelectedSourceNode(typeof data.selectedSourceNode === 'string' ? data.selectedSourceNode : null);
+
+      if (data.mode === 'simulation' || data.mode === 'real') {
+        setMode(data.mode);
+      }
+
+      // Respect isSimulating flag if present (note: loading won't start automated transfers)
+      setIsSimulating(Boolean(data.isSimulating));
 
       toast.success("Simulation loaded!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to load simulation");
+    } finally {
+      // Clear the input so the same file can be selected again
+      if (e.currentTarget) e.currentTarget.value = '';
     }
   };
 
