@@ -95,12 +95,10 @@ const Index = () => {
         return;
       }
 
-      // Apply environment exactly as provided in the file where possible
       setNodes(nodesData);
       setConnections(connectionsData);
       setBlockchain(Array.isArray(data.blockchain) ? data.blockchain : []);
 
-      // Apply optional UI/state fields if provided
       setSelectedNode(typeof data.selectedNode === 'string' ? data.selectedNode : null);
       setSelectedConnection(typeof data.selectedConnection === 'string' ? data.selectedConnection : null);
       setSelectedSourceNode(typeof data.selectedSourceNode === 'string' ? data.selectedSourceNode : null);
@@ -109,7 +107,6 @@ const Index = () => {
         setMode(data.mode);
       }
 
-      // Respect isSimulating flag if present (note: loading won't start automated transfers)
       setIsSimulating(Boolean(data.isSimulating));
 
       toast.success("Simulation loaded!");
@@ -117,7 +114,6 @@ const Index = () => {
       console.error(err);
       toast.error("Failed to load simulation");
     } finally {
-      // Clear the input so the same file can be selected again
       if (e.currentTarget) e.currentTarget.value = '';
     }
   };
@@ -277,94 +273,100 @@ const Index = () => {
                 <Circle className="h-4 w-4 mr-2" />
                 Real Mode
               </Button>
+
+              {/* ⭐ NEW Go To Room Button */}
+              <Button
+                variant="secondary"
+                className="whitespace-nowrap"
+                onClick={() => (window.location.href = "/room")}
+              >
+                Go to Room
+              </Button>
             </div>
           </div>
         </Card>
 
-        {/* Transfer log sidebar (collapsible) */}
         <TransferLogSidebar blocks={blockchain} />
 
         {mode === 'simulation' ? (
           <div className="grid grid-cols-12 gap-4 h-[calc(100vh-180px)]">
 
             <div className="col-span-3 overflow-auto">
-            <ControlPanel
-              nodes={nodes}
-              connections={connections}
-              onAddNode={handleAddNode}
-              onRemoveNode={handleRemoveNode}
-              onRemoveConnection={handleRemoveConnection}
-              onUpdateConnection={handleUpdateConnection}
-              selectedNode={selectedNode}
-              selectedConnection={selectedConnection}
-            />
-          </div>
-
-          <div className="col-span-6">
-            <NetworkGraph
-              nodes={nodes}
-              connections={connections}
-              onNodesChange={setNodes}
-              onConnectionsChange={setConnections}
-              selectedNode={selectedNode}
-              setSelectedNode={setSelectedNode}
-              selectedConnection={selectedConnection}
-              setSelectedConnection={setSelectedConnection}
-              selectedSourceNode={selectedSourceNode}
-              setSelectedSourceNode={setSelectedSourceNode}
-            />
-          </div>
-
-          <div className="col-span-3 flex flex-col gap-4 overflow-auto">
-            <FileTransferPanel
-              nodes={nodes}
-              onStartTransfer={handleStartTransfer}
-              isSimulating={isSimulating}
-              selectedSourceNode={selectedSourceNode}
-            />
-
-            <NodeDetailsPanel
-              selectedNode={selectedNode}
-              blockchain={blockchain}
-              nodes={nodes}
-            />
-
-            <div className="flex-1 min-h-0">
-              <BlockchainPanel blocks={blockchain} />
+              <ControlPanel
+                nodes={nodes}
+                connections={connections}
+                onAddNode={handleAddNode}
+                onRemoveNode={handleRemoveNode}
+                onRemoveConnection={handleRemoveConnection}
+                onUpdateConnection={handleUpdateConnection}
+                selectedNode={selectedNode}
+                selectedConnection={selectedConnection}
+              />
             </div>
+
+            <div className="col-span-6">
+              <NetworkGraph
+                nodes={nodes}
+                connections={connections}
+                onNodesChange={setNodes}
+                onConnectionsChange={setConnections}
+                selectedNode={selectedNode}
+                setSelectedNode={setSelectedNode}
+                selectedConnection={selectedConnection}
+                setSelectedConnection={setSelectedConnection}
+                selectedSourceNode={selectedSourceNode}
+                setSelectedSourceNode={setSelectedSourceNode}
+              />
+            </div>
+
+            <div className="col-span-3 flex flex-col gap-4 overflow-auto">
+              <FileTransferPanel
+                nodes={nodes}
+                onStartTransfer={handleStartTransfer}
+                isSimulating={isSimulating}
+                selectedSourceNode={selectedSourceNode}
+              />
+
+              <NodeDetailsPanel
+                selectedNode={selectedNode}
+                blockchain={blockchain}
+                nodes={nodes}
+              />
+
+              <div className="flex-1 min-h-0">
+                <BlockchainPanel blocks={blockchain} />
+              </div>
+            </div>
+
           </div>
+        ) : (
+          <Card className="p-12 text-center bg-card border-border">
+            <div className="max-w-md mx-auto space-y-4">
+              <Circle className="h-16 w-16 mx-auto text-muted-foreground" />
+              <h2 className="text-2xl font-bold text-foreground">Real Mode</h2>
+              <p className="text-muted-foreground">
+                Real mode will connect to IPFS nodes. Coming soon.
+              </p>
 
-        </div>
-      ) : (
-        <Card className="p-12 text-center bg-card border-border">
-  <div className="max-w-md mx-auto space-y-4">
-    <Circle className="h-16 w-16 mx-auto text-muted-foreground" />
-    <h2 className="text-2xl font-bold text-foreground">Real Mode</h2>
-    <p className="text-muted-foreground">
-      Real mode will connect to IPFS nodes. Coming soon.
-    </p>
+              <Button
+                className="glow-secondary"
+                onClick={() => {
+                  try {
+                    window.open("realmode://start");
+                  } catch (e) {
+                    toast.error("Unable to launch real mode handler.");
+                  }
+                }}
+              >
+                Start Real Mode (Requires Admin)
+              </Button>
 
-    {/* NEW Start Real Mode button */}
-    <Button
-      className="glow-secondary"
-      onClick={() => {
-        try {
-          window.open("realmode://start");
-        } catch (e) {
-          toast.error("Unable to launch real mode handler.");
-        }
-      }}
-    >
-      Start Real Mode (Requires Admin)
-    </Button>
-
-    <Button onClick={() => setMode('simulation')} className="glow-primary">
-      Back to Simulation
-    </Button>
-  </div>
-</Card>
-
-      )}
+              <Button onClick={() => setMode('simulation')} className="glow-primary">
+                Back to Simulation
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
