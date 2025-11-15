@@ -3,6 +3,7 @@ import { NetworkGraph } from '@/components/NetworkGraph';
 import { ControlPanel } from '@/components/ControlPanel';
 import { FileTransferPanel } from '@/components/FileTransferPanel';
 import { BlockchainPanel } from '@/components/BlockchainPanel';
+import { NodeDetailsPanel } from '@/components/NodeDetailsPanel';
 import { NetworkNode, NetworkConnection, Block, FileChunk } from '@/types/network';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
