@@ -229,64 +229,65 @@ const Index = () => {
         UI RENDER
   ----------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-background p-4">
-      
-      <Card className="mb-4 p-4 bg-card border-border">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gradient">IPFS Network Simulator</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Visual network topology editor with file transfer simulation
-            </p>
-          </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="p-4">
+        <Card className="mb-4 p-4 bg-card border-border">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gradient">IPFS Network Simulator</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Visual network topology editor with file transfer simulation
+              </p>
+            </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleSaveSimulation}>Save</Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleSaveSimulation} className="whitespace-nowrap">Save</Button>
 
-            <>
-              <input
-                id="loadSimulationInput"
-                type="file"
-                accept=".json,.simnet.json"
-                className="hidden"
-                onChange={handleLoadSimulation}
-              />
+              <>
+                <input
+                  id="loadSimulationInput"
+                  type="file"
+                  accept=".json,.simnet.json"
+                  className="hidden"
+                  onChange={handleLoadSimulation}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => (document.getElementById('loadSimulationInput') as HTMLInputElement)?.click()}
+                  className="whitespace-nowrap"
+                >
+                  Load
+                </Button>
+              </>
+
               <Button
-                variant="outline"
-                onClick={() => (document.getElementById('loadSimulationInput') as HTMLInputElement)?.click()}
+                variant={mode === 'simulation' ? 'default' : 'outline'}
+                onClick={() => setMode('simulation')}
+                className={`whitespace-nowrap ${mode === 'simulation' ? 'glow-primary' : ''}`}
               >
-                Load
+                <Activity className="h-4 w-4 mr-2" />
+                Simulation Mode
               </Button>
-            </>
 
-            <Button
-              variant={mode === 'simulation' ? 'default' : 'outline'}
-              onClick={() => setMode('simulation')}
-              className={mode === 'simulation' ? 'glow-primary' : ''}
-            >
-              <Activity className="h-4 w-4 mr-2" />
-              Simulation Mode
-            </Button>
-
-            <Button
-              variant={mode === 'real' ? 'default' : 'outline'}
-              onClick={() => setMode('real')}
-              className={mode === 'real' ? 'glow-secondary' : ''}
-            >
-              <Circle className="h-4 w-4 mr-2" />
-              Real Mode
-            </Button>
+              <Button
+                variant={mode === 'real' ? 'default' : 'outline'}
+                onClick={() => setMode('real')}
+                className={`whitespace-nowrap ${mode === 'real' ? 'glow-secondary' : ''}`}
+              >
+                <Circle className="h-4 w-4 mr-2" />
+                Real Mode
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      {/* Transfer log sidebar (collapsible) */}
-      <TransferLogSidebar blocks={blockchain} />
+        {/* Transfer log sidebar (collapsible) */}
+        <TransferLogSidebar blocks={blockchain} />
 
-      {mode === 'simulation' ? (
-        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
+        {mode === 'simulation' ? (
+          <div className="grid grid-cols-12 gap-4 h-[calc(100vh-180px)]">
 
-          <div className="col-span-3 overflow-auto">
+            <div className="col-span-3 overflow-auto">
             <ControlPanel
               nodes={nodes}
               connections={connections}
@@ -346,7 +347,7 @@ const Index = () => {
           </div>
         </Card>
       )}
-
+      </div>
     </div>
   );
 };

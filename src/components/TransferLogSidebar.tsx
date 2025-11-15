@@ -1,73 +1,64 @@
 import * as React from 'react';
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Clock, ArrowRight, Hash } from 'lucide-react';
+import { Clock, ArrowRight, ChevronDown } from 'lucide-react';
 import { Block } from '@/types/network';
+import { Button } from '@/components/ui/button';
 
 interface TransferLogSidebarProps {
   blocks: Block[];
 }
 
 export const TransferLogSidebar = ({ blocks }: TransferLogSidebarProps) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div>
-        {/* Trigger is positioned inside the provider so it can toggle the sidebar */}
-        <div className="absolute right-4 top-6 z-50">
-          <SidebarTrigger />
+    <div className="fixed right-4 bottom-4 z-40">
+      <Card className="bg-card border-border shadow-lg w-80">
+        <div className="flex items-center justify-between p-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground">Transfer Log</h3>
+            <span className="text-xs text-muted-foreground">({blocks.length})</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsOpen(!isOpen)}
+            className="h-6 w-6 p-0"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+          </Button>
         </div>
 
-        <Sidebar side="right" variant="sidebar" collapsible="icon">
-          <SidebarContent>
-            <SidebarHeader>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-foreground">Transfer Log</h3>
-                <span className="ml-auto text-xs text-muted-foreground">{blocks.length}</span>
-              </div>
-            </SidebarHeader>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>Chunks</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <Card className="p-2 bg-card border-border">
-                  <ScrollArea className="h-[calc(100vh-8rem)]">
-                    {blocks.length === 0 ? (
-                      <div className="text-sm text-muted-foreground p-4">No transfers yet.</div>
-                    ) : (
-                      <div className="space-y-2">
-                        {[...blocks].reverse().map((block) => (
-                          <div key={block.blockNumber} className="p-2 bg-muted rounded-md border border-border">
-                            <div className="flex items-center justify-between">
-                              <div className="text-xs">
-                                <div className="font-medium">Chunk #{block.chunkId} — {block.fileName}</div>
-                                <div className="text-muted-foreground text-[11px] flex items-center gap-2">
-                                  <span className="px-2 py-0.5 bg-background rounded font-mono">{block.from}</span>
-                                  <ArrowRight className="h-3 w-3" />
-                                  <span className="px-2 py-0.5 bg-background rounded font-mono">{block.to}</span>
-                                </div>
-                              </div>
-                              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {new Date(block.timestamp).toLocaleTimeString()}
-                              </div>
-                            </div>
-                            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-2">
-                              <Hash className="h-3 w-3" />
-                              <span className="font-mono truncate">{block.hash}</span>
-                            </div>
-                          </div>
-                        ))}
+        {isOpen && (
+          <ScrollArea className="h-96 w-full">
+            <div className="p-3">
+              {blocks.length === 0 ? (
+                <div className="text-xs text-muted-foreground text-center py-4">No transfers yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {[...blocks].reverse().slice(0, 20).map((block) => (
+                    <div key={block.blockNumber} className="p-2 bg-muted rounded border border-border/50 text-xs">
+                      <div className="font-medium text-foreground mb-1">Chunk #{block.chunkId}</div>
+                      <div className="text-muted-foreground text-[10px] mb-2 truncate">{block.fileName}</div>
+                      <div className="flex items-center gap-1 mb-1 text-[9px]">
+                        <span className="px-1.5 py-0.5 bg-background rounded font-mono">{block.from}</span>
+                        <ArrowRight className="h-2.5 w-2.5 flex-shrink-0" />
+                        <span className="px-1.5 py-0.5 bg-background rounded font-mono">{block.to}</span>
                       </div>
-                    )}
-                  </ScrollArea>
-                </Card>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
-      </div>
-    </SidebarProvider>
+                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+                        {new Date(block.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        )}
+      </Card>
+    </div>
   );
 };
 
