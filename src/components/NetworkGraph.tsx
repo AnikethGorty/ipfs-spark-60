@@ -61,10 +61,15 @@ interface NetworkGraphProps {
   connections: NetworkConnection[];
   onNodesChange: (nodes: NetworkNode[]) => void;
   onConnectionsChange: (connections: NetworkConnection[]) => void;
+
   selectedNode: string | null;
   setSelectedNode: (id: string | null) => void;
+
   selectedConnection: string | null;
   setSelectedConnection: (id: string | null) => void;
+
+  // OPTIONAL: If you want clicking a node to auto-set source
+  setSelectedSourceNode?: (id: string) => void;
 }
 
 export const NetworkGraph = ({
@@ -76,6 +81,7 @@ export const NetworkGraph = ({
   setSelectedNode,
   selectedConnection,
   setSelectedConnection,
+  setSelectedSourceNode, // OPTIONAL – parent passes this
 }: NetworkGraphProps) => {
   const [nodes, setNodes, onNodesChangeFlow] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeFlow] = useEdgesState([]);
@@ -86,9 +92,9 @@ export const NetworkGraph = ({
   useEffect(() => {
     const flowNodes: Node[] = networkNodes.map(node => ({
       id: node.id,
-      type: 'default',
       position: node.position,
       data: { label: node.label },
+      type: 'default',
       style: {
         background:
           node.status === 'transferring'
@@ -121,11 +127,9 @@ export const NetworkGraph = ({
   }, [networkNodes, selectedNode, setNodes]);
 
   /* ------------------------------------------
-     Convert connections → ReactFlow edges
-     With automatic spacing for parallel edges
+     Convert connections → edges with multi-edge spacing
   ------------------------------------------- */
   useEffect(() => {
-    // Group edges by node pair
     const grouped = new Map<string, NetworkConnection[]>();
 
     for (const c of networkConnections) {
@@ -144,11 +148,7 @@ export const NetworkGraph = ({
         source: conn.source,
         target: conn.target,
         type: 'curvedMulti',
-        animated: false,
-        data: {
-          index,
-          total: siblings.length,
-        },
+        data: { index, total: siblings.length },
         style: {
           stroke:
             conn.type === 'wired'
@@ -186,22 +186,9 @@ export const NetworkGraph = ({
   }, [networkConnections, selectedConnection, setEdges]);
 
   /* ------------------------------------------
-     Connection creation
+     Create new connections
   ------------------------------------------- */
   const onConnect = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
-    console.log("Clicked node:", node.id);
-
-    // 🔥 Set it as the selected source node
-    setSelectedSourceNode(node.id);
-
-    // Keep your existing logic
-    setSelectedNode(node.id);
-    setContextMenu({
-        x: _event.clientX,
-        y: _event.clientY,
-        nodeId: node.id,
-    });
     (params: Connection) => {
       if (!params.source || !params.target) return;
 
@@ -223,7 +210,7 @@ export const NetworkGraph = ({
   );
 
   /* ------------------------------------------
-     Node dragging updates stored positions
+     Node drag updates position
   ------------------------------------------- */
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
@@ -236,14 +223,17 @@ export const NetworkGraph = ({
   );
 
   /* ------------------------------------------
-     Click handlers
+     CLICK HANDLERS
   ------------------------------------------- */
   const onNodeClick = useCallback(
     (_: any, node: Node) => {
       setSelectedNode(node.id);
       setSelectedConnection(null);
+
+      // OPTIONAL: auto-set file-transfer source node
+      if (setSelectedSourceNode) setSelectedSourceNode(node.id);
     },
-    [setSelectedNode, setSelectedConnection]
+    [setSelectedNode, setSelectedConnection, setSelectedSourceNode]
   );
 
   const onEdgeClick = useCallback(
