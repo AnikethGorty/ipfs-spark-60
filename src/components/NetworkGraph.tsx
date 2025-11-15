@@ -33,7 +33,7 @@ function CurvedMultiEdge({
   const index = data?.index ?? 0;
   const total = data?.total ?? 1;
 
-  const curveStrength = 40; // distance between curves
+  const curveStrength = 40;
   const offset = (index - (total - 1) / 2) * curveStrength;
 
   const [edgePath] = getBezierPath({
@@ -54,7 +54,7 @@ function CurvedMultiEdge({
 }
 
 /* ------------------------------------------
-   MAIN NETWORK GRAPH COMPONENT
+   MAIN NETWORK GRAPH PROPS
 ------------------------------------------- */
 interface NetworkGraphProps {
   nodes: NetworkNode[];
@@ -68,8 +68,9 @@ interface NetworkGraphProps {
   selectedConnection: string | null;
   setSelectedConnection: (id: string | null) => void;
 
-  // OPTIONAL: If you want clicking a node to auto-set source
-  setSelectedSourceNode?: (id: string) => void;
+  // REQUIRED ✔
+  selectedSourceNode: string | null;
+  setSelectedSourceNode: (id: string | null) => void;
 }
 
 export const NetworkGraph = ({
@@ -81,20 +82,21 @@ export const NetworkGraph = ({
   setSelectedNode,
   selectedConnection,
   setSelectedConnection,
-  setSelectedSourceNode, // OPTIONAL – parent passes this
+  selectedSourceNode,
+  setSelectedSourceNode,
 }: NetworkGraphProps) => {
   const [nodes, setNodes, onNodesChangeFlow] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeFlow] = useEdgesState([]);
 
   /* ------------------------------------------
-     Convert nodes → ReactFlow nodes
+     NODE CONVERSION
   ------------------------------------------- */
   useEffect(() => {
     const flowNodes: Node[] = networkNodes.map(node => ({
       id: node.id,
       position: node.position,
-      data: { label: node.label },
       type: 'default',
+      data: { label: node.label },
       style: {
         background:
           node.status === 'transferring'
@@ -106,6 +108,8 @@ export const NetworkGraph = ({
         border:
           selectedNode === node.id
             ? '2px solid hsl(var(--primary))'
+            : selectedSourceNode === node.id
+            ? '2px dashed hsl(var(--secondary))'
             : '1px solid hsl(var(--border))',
         borderRadius: '50%',
         width: 60,
@@ -115,19 +119,13 @@ export const NetworkGraph = ({
         justifyContent: 'center',
         fontSize: '12px',
         fontWeight: 'bold',
-        boxShadow:
-          node.status === 'transferring'
-            ? 'var(--glow-accent)'
-            : node.status === 'online'
-            ? 'var(--glow-primary)'
-            : 'none',
       },
     }));
     setNodes(flowNodes);
-  }, [networkNodes, selectedNode, setNodes]);
+  }, [networkNodes, selectedNode, selectedSourceNode, setNodes]);
 
   /* ------------------------------------------
-     Convert connections → edges with multi-edge spacing
+     EDGE CONVERSION (with curved multi-edges)
   ------------------------------------------- */
   useEffect(() => {
     const grouped = new Map<string, NetworkConnection[]>();
@@ -163,40 +161,28 @@ export const NetworkGraph = ({
               ? 'hsl(var(--connection-wired))'
               : 'hsl(var(--connection-wireless))',
         },
-        label:
-          selectedConnection === conn.id
-            ? `${conn.name} - ${conn.bandwidth}Mbps, ${conn.latency}ms`
-            : conn.name,
+        label: conn.name,
         labelStyle: {
           fill: 'hsl(var(--foreground))',
           fontSize: 9,
           fontWeight: 600,
         },
-        labelBgStyle: {
-          fill: 'hsl(var(--card))',
-          fillOpacity: 0.9,
-          rx: 4,
-          ry: 4,
-        },
-        labelBgPadding: [4, 6],
       };
     });
 
     setEdges(flowEdges);
-  }, [networkConnections, selectedConnection, setEdges]);
+  }, [networkConnections, setEdges]);
 
   /* ------------------------------------------
-     Create new connections
+     CREATE CONNECTIONS
   ------------------------------------------- */
   const onConnect = useCallback(
     (params: Connection) => {
-      if (!params.source || !params.target) return;
-
       const newConnection: NetworkConnection = {
         id: `conn-${Date.now()}`,
         name: 'Connection',
-        source: params.source,
-        target: params.target,
+        source: params.source!,
+        target: params.target!,
         type: 'wired',
         latency: 10,
         bandwidth: 100,
@@ -210,7 +196,7 @@ export const NetworkGraph = ({
   );
 
   /* ------------------------------------------
-     Node drag updates position
+     DRAG NODE TO MOVE
   ------------------------------------------- */
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
@@ -230,8 +216,8 @@ export const NetworkGraph = ({
       setSelectedNode(node.id);
       setSelectedConnection(null);
 
-      // OPTIONAL: auto-set file-transfer source node
-      if (setSelectedSourceNode) setSelectedSourceNode(node.id);
+      // 🔥 ALWAYS SET SOURCE NODE
+      setSelectedSourceNode(node.id);
     },
     [setSelectedNode, setSelectedConnection, setSelectedSourceNode]
   );
@@ -250,7 +236,7 @@ export const NetworkGraph = ({
   }, [setSelectedNode, setSelectedConnection]);
 
   /* ------------------------------------------
-     RENDER
+     UI
   ------------------------------------------- */
   return (
     <div className="h-full w-full bg-background/50 rounded-lg overflow-hidden border border-border">
