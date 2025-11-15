@@ -337,15 +337,33 @@ const Index = () => {
         </div>
       ) : (
         <Card className="p-12 text-center bg-card border-border">
-          <div className="max-w-md mx-auto space-y-4">
-            <Circle className="h-16 w-16 mx-auto text-muted-foreground" />
-            <h2 className="text-2xl font-bold text-foreground">Real Mode</h2>
-            <p className="text-muted-foreground">Real mode will connect to IPFS nodes. Coming soon.</p>
-            <Button onClick={() => setMode('simulation')} className="glow-primary">
-              Back to Simulation
-            </Button>
-          </div>
-        </Card>
+  <div className="max-w-md mx-auto space-y-4">
+    <Circle className="h-16 w-16 mx-auto text-muted-foreground" />
+    <h2 className="text-2xl font-bold text-foreground">Real Mode</h2>
+    <p className="text-muted-foreground">
+      Real mode will connect to IPFS nodes. Coming soon.
+    </p>
+
+    {/* NEW Start Real Mode button */}
+    <Button
+      className="glow-secondary"
+      onClick={() => {
+        try {
+          window.open("realmode://start");
+        } catch (e) {
+          toast.error("Unable to launch real mode handler.");
+        }
+      }}
+    >
+      Start Real Mode (Requires Admin)
+    </Button>
+
+    <Button onClick={() => setMode('simulation')} className="glow-primary">
+      Back to Simulation
+    </Button>
+  </div>
+</Card>
+
       )}
       </div>
     </div>
