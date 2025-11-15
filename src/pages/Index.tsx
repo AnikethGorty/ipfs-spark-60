@@ -207,21 +207,7 @@ const Index = () => {
       setIsSimulating(false);
     }
   };
-
-  const handleLoadSimulation = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-
-    // --- Validate ---
-    if (!Array.isArray(data.nodes) || !Array.isArray(data.connections)) {
-      toast.error("Invalid simulation file!");
-      return;
-    }
-
+  
     // --- Restore state ---
     setNodes(data.nodes);
     setConnections(data.connections);
