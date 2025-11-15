@@ -50,12 +50,62 @@ const Index = () => {
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // 🔥 NEW — This is the "auto-source" node for file transfers
+  // Auto-selected source node for transfers
   const [selectedSourceNode, setSelectedSourceNode] = useState<string | null>(null);
 
-  /* ------------------------------------------
-     Node / Connection Controls
-  ------------------------------------------- */
+  /* -----------------------------------------------------
+        SAVE SIMULATION
+  ----------------------------------------------------- */
+  const handleSaveSimulation = () => {
+    const exportData = {
+      version: 1,
+      createdAt: new Date().toISOString(),
+      nodes,
+      connections,
+      blockchain,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ipfs-simulation.simnet.json";
+    a.click();
+  };
+
+  /* -----------------------------------------------------
+        LOAD SIMULATION
+  ----------------------------------------------------- */
+  const handleLoadSimulation = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (!data.nodes || !data.connections) {
+        toast.error("Invalid simulation file");
+        return;
+      }
+
+      setNodes(data.nodes);
+      setConnections(data.connections);
+      setBlockchain(data.blockchain || []);
+
+      toast.success("Simulation loaded!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load simulation");
+    }
+  };
+
+  /* -----------------------------------------------------
+        NETWORK CONTROLS
+  ----------------------------------------------------- */
   const handleAddNode = useCallback((node: NetworkNode) => {
     setNodes(prev => [...prev, node]);
     toast.success(`Node "${node.label}" added`);
@@ -78,9 +128,9 @@ const Index = () => {
     setConnections(prev => prev.map(c => (c.id === connection.id ? connection : c)));
   }, []);
 
-  /* ------------------------------------------
-     File Transfer Simulation
-  ------------------------------------------- */
+  /* -----------------------------------------------------
+        FILE TRANSFER SIMULATION
+  ----------------------------------------------------- */
   const simulateTransfer = async (chunks: FileChunk[], path: string[], fileName: string) => {
     let blockNumber = blockchain.length;
 
@@ -95,21 +145,21 @@ const Index = () => {
           )
         );
 
-        const connection = connections.find(
+        const link = connections.find(
           c =>
             (c.source === from && c.target === to) ||
             (c.source === to && c.target === from)
         );
-        if (!connection) continue;
+        if (!link) continue;
 
         const transferTime = calculateTransferTime(
           chunk.size,
-          connection.bandwidth,
-          connection.latency,
-          connection.packetLoss
+          link.bandwidth,
+          link.latency,
+          link.packetLoss
         );
 
-        await new Promise(resolve => setTimeout(resolve, transferTime));
+        await new Promise(r => setTimeout(r, transferTime));
 
         const fromNode = nodes.find(n => n.id === from);
         const toNode = nodes.find(n => n.id === to);
@@ -135,65 +185,61 @@ const Index = () => {
     }
   };
 
-  const handleStartTransfer = async (
-    file: File,
-    sourceId: string,
-    destId: string,
-    chunkSize: number
-  ) => {
+  const handleStartTransfer = async (file: File, sourceId: string, destId: string, chunkSize: number) => {
     setIsSimulating(true);
-    toast.info('Starting file transfer simulation...');
+    toast.info("Starting file transfer simulation...");
 
     try {
       const chunks = await chunkFile(file, chunkSize);
-
       const path = findShortestPath(nodes, connections, sourceId, destId);
+
       if (path.length < 2) {
-        toast.error('No path found between nodes');
+        toast.error("No path found between nodes");
         setIsSimulating(false);
         return;
       }
 
       await simulateTransfer(chunks, path, file.name);
-
-      toast.success('File transfer completed!');
+      toast.success("File transfer completed!");
     } catch {
-      toast.error('Transfer failed');
+      toast.error("Transfer failed");
     } finally {
       setIsSimulating(false);
     }
   };
 
-  /* ------------------------------------------
-     UI Layout
-  ------------------------------------------- */
+  /* -----------------------------------------------------
+        UI RENDER
+  ----------------------------------------------------- */
   return (
     <div className="min-h-screen bg-background p-4">
-      {/* Header */}
-                    <Card className="mb-4 p-4 bg-card border-border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h1 className="text-3xl font-bold text-gradient">IPFS Network Simulator</h1>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Visual network topology editor with file transfer simulation
-                          </p>
-                        </div>
-              
-                        <div className="flex gap-2">
-                          <Button onClick={handleSaveSimulation}>
-                Save
-              </Button>
-              
-              <label>
-                <input
-                  type="file"
-                  accept=".json,.simnet.json"
-                  className="hidden"
-                  onChange={handleLoadSimulation}
-                />
-                <Button variant="outline">Load</Button>
-              </label>
 
+      <Card className="mb-4 p-4 bg-card border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gradient">IPFS Network Simulator</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Visual network topology editor with file transfer simulation
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+
+            {/* Save */}
+            <Button onClick={handleSaveSimulation}>Save</Button>
+
+            {/* Load */}
+            <label>
+              <input
+                type="file"
+                accept=".json,.simnet.json"
+                className="hidden"
+                onChange={handleLoadSimulation}
+              />
+              <Button variant="outline">Load</Button>
+            </label>
+
+            {/* Mode toggles */}
             <Button
               variant={mode === 'simulation' ? 'default' : 'outline'}
               onClick={() => setMode('simulation')}
@@ -211,6 +257,7 @@ const Index = () => {
               <Circle className="h-4 w-4 mr-2" />
               Real Mode
             </Button>
+
           </div>
         </div>
       </Card>
@@ -218,7 +265,6 @@ const Index = () => {
       {mode === 'simulation' ? (
         <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
 
-          {/* Left Panel */}
           <div className="col-span-3 overflow-auto">
             <ControlPanel
               nodes={nodes}
@@ -232,9 +278,7 @@ const Index = () => {
             />
           </div>
 
-          {/* Center Panel */}
           <div className="col-span-6">
-            {/* Pass selectedSourceNode into NetworkGraph */}
             <NetworkGraph
               nodes={nodes}
               connections={connections}
@@ -249,10 +293,8 @@ const Index = () => {
             />
           </div>
 
-          {/* Right Panel */}
           <div className="col-span-3 flex flex-col gap-4 overflow-auto">
 
-            {/* File Transfer Panel with auto-updating source */}
             <FileTransferPanel
               nodes={nodes}
               onStartTransfer={handleStartTransfer}
@@ -268,22 +310,23 @@ const Index = () => {
             <div className="flex-1 min-h-0">
               <BlockchainPanel blocks={blockchain} />
             </div>
+
           </div>
+
         </div>
       ) : (
         <Card className="p-12 text-center bg-card border-border">
           <div className="max-w-md mx-auto space-y-4">
             <Circle className="h-16 w-16 mx-auto text-muted-foreground" />
             <h2 className="text-2xl font-bold text-foreground">Real Mode</h2>
-            <p className="text-muted-foreground">
-              Real mode will connect to actual IPFS nodes. Coming soon!
-            </p>
+            <p className="text-muted-foreground">Real mode will connect to IPFS nodes. Coming soon.</p>
             <Button onClick={() => setMode('simulation')} className="glow-primary">
               Back to Simulation
             </Button>
           </div>
         </Card>
       )}
+
     </div>
   );
 };
