@@ -4,13 +4,13 @@ import threading
 import json
 from flask import Flask, request, jsonify
 import psutil
-from zeroconf import Zeroconf, ServiceInfo, InterfaceChoice
+from zeroconf import Zeroconf, ServiceInfo
 import time
 
 app = Flask(__name__)
 
 # -----------------------------------------------------
-# Select a REAL IPv4 LAN/WiFi IP (avoid VirtualBox etc.)
+# Select a REAL IPv4 LAN/WiFi IP (avoid VM adapters)
 # -----------------------------------------------------
 def get_real_ip():
     bad_ifaces = ["Virtual", "VMware", "vEthernet", "Loopback", "Bluetooth", "WSL"]
@@ -22,8 +22,11 @@ def get_real_ip():
         for a in addrs:
             if a.family.name == "AF_INET":
                 ip = a.address
+
+                # skip APIPA
                 if ip.startswith("169.254."):
-                    continue  # skip APIPA
+                    continue
+
                 return ip
 
     return "127.0.0.1"
@@ -67,7 +70,7 @@ def get_metrics():
 
 
 # -----------------------------
-# Zeroconf (forced to correct IP)
+# Zeroconf (FORCED to correct IP)
 # -----------------------------
 zc = None
 service_info = None
@@ -80,8 +83,8 @@ def advertise_service(port: int):
         hostname = socket.gethostname()
         service_name = f"ipfs-spark-node-{hostname}-{port}"
 
-        # Force zeroconf to bind to ONLY the chosen interface
-        zc = Zeroconf(interfaces=[ip], interface_choice=InterfaceChoice.Manual)
+        # FORCE zeroconf to only use the correct WiFi IP
+        zc = Zeroconf(interfaces=[ip])
 
         info = ServiceInfo(
             "_http._tcp.local.",
