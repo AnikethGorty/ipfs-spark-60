@@ -227,15 +227,21 @@ const Index = () => {
           <div className="flex gap-2">
             <Button onClick={handleSaveSimulation}>Save</Button>
 
-            <label>
+            <>
               <input
+                id="loadSimulationInput"
                 type="file"
                 accept=".json,.simnet.json"
                 className="hidden"
                 onChange={handleLoadSimulation}
               />
-              <Button variant="outline">Load</Button>
-            </label>
+              <Button
+                variant="outline"
+                onClick={() => (document.getElementById('loadSimulationInput') as HTMLInputElement)?.click()}
+              >
+                Load
+              </Button>
+            </>
 
             <Button
               variant={mode === 'simulation' ? 'default' : 'outline'}
