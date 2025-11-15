@@ -1,0 +1,277 @@
+import { useState, useCallback } from 'react';
+import { NetworkGraph } from '@/components/NetworkGraph';
+import { ControlPanel } from '@/components/ControlPanel';
+import { FileTransferPanel } from '@/components/FileTransferPanel';
+import { BlockchainPanel } from '@/components/BlockchainPanel';
+import { NetworkNode, NetworkConnection, Block, FileChunk, ChunkTransfer } from '@/types/network';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { chunkFile, calculateTransferTime, findShortestPath, createBlock } from '@/utils/simulation';
+import { toast } from 'sonner';
+import { Activity, Circle } from 'lucide-react';
+
+const Index = () => {
+  const [mode, setMode] = useState<'simulation' | 'real'>('simulation');
+  const [nodes, setNodes] = useState<NetworkNode[]>([
+    { id: 'node-1', label: 'Node A', position: { x: 100, y: 100 }, status: 'online' },
+    { id: 'node-2', label: 'Node B', position: { x: 400, y: 100 }, status: 'online' },
+    { id: 'node-3', label: 'Node C', position: { x: 250, y: 300 }, status: 'online' },
+  ]);
+  const [connections, setConnections] = useState<NetworkConnection[]>([
+    {
+      id: 'conn-1',
+      name: 'Link 1',
+      source: 'node-1',
+      target: 'node-2',
+      type: 'wired',
+      latency: 10,
+      bandwidth: 100,
+      packetLoss: 0,
+      distance: 100,
+    },
+    {
+      id: 'conn-2',
+      name: 'Link 2',
+      source: 'node-2',
+      target: 'node-3',
+      type: 'wireless',
+      latency: 20,
+      bandwidth: 50,
+      packetLoss: 0.05,
+      distance: 150,
+    },
+  ]);
+  const [blockchain, setBlockchain] = useState<Block[]>([]);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleAddNode = useCallback((node: NetworkNode) => {
+    setNodes((prev) => [...prev, node]);
+    toast.success(`Node "${node.label}" added`);
+  }, []);
+
+  const handleRemoveNode = useCallback((id: string) => {
+    setNodes((prev) => prev.filter((n) => n.id !== id));
+    setConnections((prev) => prev.filter((c) => c.source !== id && c.target !== id));
+    setSelectedNode(null);
+    toast.success('Node removed');
+  }, []);
+
+  const handleRemoveConnection = useCallback((id: string) => {
+    setConnections((prev) => prev.filter((c) => c.id !== id));
+    setSelectedConnection(null);
+    toast.success('Connection removed');
+  }, []);
+
+  const handleUpdateConnection = useCallback((connection: NetworkConnection) => {
+    setConnections((prev) =>
+      prev.map((c) => (c.id === connection.id ? connection : c))
+    );
+  }, []);
+
+  const simulateTransfer = async (
+    chunks: FileChunk[],
+    path: string[],
+    fileName: string
+  ) => {
+    let blockNumber = blockchain.length;
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+
+      // Transfer chunk through each hop in the path
+      for (let j = 0; j < path.length - 1; j++) {
+        const from = path[j];
+        const to = path[j + 1];
+
+        // Update node status
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === from || n.id === to
+              ? { ...n, status: 'transferring' as const }
+              : n
+          )
+        );
+
+        // Find connection
+        const connection = connections.find(
+          (c) =>
+            (c.source === from && c.target === to) ||
+            (c.source === to && c.target === from)
+        );
+
+        if (!connection) continue;
+
+        // Calculate transfer time
+        const transferTime = calculateTransferTime(
+          chunk.size,
+          connection.bandwidth,
+          connection.latency,
+          connection.packetLoss
+        );
+
+        // Wait for transfer
+        await new Promise((resolve) => setTimeout(resolve, transferTime));
+
+        // Create block
+        const fromNode = nodes.find(n => n.id === from);
+        const toNode = nodes.find(n => n.id === to);
+        const block = createBlock(
+          blockNumber++,
+          chunk.id,
+          fileName,
+          chunk.hash,
+          fromNode?.label || from,
+          toNode?.label || to,
+          transferTime
+        );
+
+        setBlockchain((prev) => [...prev, block]);
+
+        // Reset node status
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === from || n.id === to
+              ? { ...n, status: 'online' as const }
+              : n
+          )
+        );
+      }
+    }
+  };
+
+  const handleStartTransfer = async (
+    file: File,
+    sourceId: string,
+    destId: string,
+    chunkSize: number
+  ) => {
+    setIsSimulating(true);
+    toast.info('Starting file transfer simulation...');
+
+    try {
+      // Chunk the file
+      const chunks = await chunkFile(file, chunkSize);
+      toast.success(`File chunked into ${chunks.length} chunks`);
+
+      // Find path
+      const path = findShortestPath(nodes, connections, sourceId, destId);
+
+      if (path.length < 2) {
+        toast.error('No path found between nodes');
+        setIsSimulating(false);
+        return;
+      }
+
+      toast.info(`Path found: ${path.map(id => nodes.find(n => n.id === id)?.label || id).join(' → ')}`);
+
+      // Simulate transfer
+      await simulateTransfer(chunks, path, file.name);
+
+      toast.success('File transfer completed!');
+    } catch (error) {
+      console.error('Transfer error:', error);
+      toast.error('Transfer failed');
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-4">
+      {/* Header */}
+      <Card className="mb-4 p-4 bg-card border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gradient">
+              IPFS Network Simulator
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Visual network topology editor with file transfer simulation
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant={mode === 'simulation' ? 'default' : 'outline'}
+              onClick={() => setMode('simulation')}
+              className={mode === 'simulation' ? 'glow-primary' : ''}
+            >
+              <Activity className="h-4 w-4 mr-2" />
+              Simulation Mode
+            </Button>
+            <Button
+              variant={mode === 'real' ? 'default' : 'outline'}
+              onClick={() => setMode('real')}
+              className={mode === 'real' ? 'glow-secondary' : ''}
+            >
+              <Circle className="h-4 w-4 mr-2" />
+              Real Mode
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {mode === 'simulation' ? (
+        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
+          {/* Left Panel - Controls */}
+          <div className="col-span-3 overflow-auto">
+            <ControlPanel
+              nodes={nodes}
+              connections={connections}
+              onAddNode={handleAddNode}
+              onRemoveNode={handleRemoveNode}
+              onRemoveConnection={handleRemoveConnection}
+              onUpdateConnection={handleUpdateConnection}
+              selectedNode={selectedNode}
+              selectedConnection={selectedConnection}
+            />
+          </div>
+
+          {/* Center Panel - Network Graph */}
+          <div className="col-span-6">
+            <NetworkGraph
+              nodes={nodes}
+              connections={connections}
+              onNodesChange={setNodes}
+              onConnectionsChange={setConnections}
+              selectedNode={selectedNode}
+              setSelectedNode={setSelectedNode}
+              selectedConnection={selectedConnection}
+              setSelectedConnection={setSelectedConnection}
+            />
+          </div>
+
+          {/* Right Panel - File Transfer & Blockchain */}
+          <div className="col-span-3 flex flex-col gap-4 overflow-auto">
+            <FileTransferPanel
+              nodes={nodes}
+              onStartTransfer={handleStartTransfer}
+              isSimulating={isSimulating}
+            />
+            <div className="flex-1 min-h-0">
+              <BlockchainPanel blocks={blockchain} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Card className="p-12 text-center bg-card border-border">
+          <div className="max-w-md mx-auto space-y-4">
+            <Circle className="h-16 w-16 mx-auto text-muted-foreground" />
+            <h2 className="text-2xl font-bold text-foreground">Real Mode</h2>
+            <p className="text-muted-foreground">
+              Real mode will connect to actual IPFS network nodes.
+              This feature is coming soon!
+            </p>
+            <Button onClick={() => setMode('simulation')} className="glow-primary">
+              Back to Simulation
+            </Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default Index;

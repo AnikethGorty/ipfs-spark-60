@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 25% 8%;
+    --foreground: 180 100% 95%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 180 100% 95%;
+
+    --popover: 220 20% 10%;
+    --popover-foreground: 180 100% 95%;
+
+    --primary: 185 95% 55%;
+    --primary-foreground: 220 25% 8%;
+
+    --secondary: 280 75% 60%;
+    --secondary-foreground: 180 100% 95%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 180 20% 60%;
+
+    --accent: 45 100% 60%;
+    --accent-foreground: 220 25% 8%;
+
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 180 100% 95%;
+
+    --success: 140 70% 50%;
+    --success-foreground: 220 25% 8%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 15%;
+    --ring: 185 95% 55%;
+
+    --radius: 0.75rem;
+
+    /* Network visualization colors */
+    --node-default: 200 80% 50%;
+    --node-active: 140 80% 50%;
+    --node-transferring: 45 100% 60%;
+    
+    --connection-wired: 185 95% 55%;
+    --connection-wireless: 280 75% 60%;
+    
+    --blockchain-block: 45 100% 60%;
+    --blockchain-chain: 185 50% 40%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(185 95% 55%), hsl(280 75% 60%));
+    --gradient-glow: radial-gradient(circle, hsl(185 95% 55% / 0.15), transparent);
+    
+    /* Shadows and glows */
+    --glow-primary: 0 0 20px hsl(185 95% 55% / 0.5);
+    --glow-secondary: 0 0 20px hsl(280 75% 60% / 0.5);
+    --glow-accent: 0 0 20px hsl(45 100% 60% / 0.5);
+  }
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+  
+  .glow-secondary {
+    box-shadow: var(--glow-secondary);
+  }
+  
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+  
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
