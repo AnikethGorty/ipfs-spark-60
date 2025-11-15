@@ -6,8 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import RoomStatus from "./pages/RoomStatus";  // <-- added
-import Home from "./pages/Home";              // <-- only if you actually have Home.tsx
+import RoomStatus from "./pages/RoomStatus";
+
+import { PresenceProvider } from "./contexts/PresenceContext";
 
 const queryClient = new QueryClient();
 
@@ -17,23 +18,16 @@ const App = () => (
       <Toaster />
       <Sonner />
 
-      <BrowserRouter>
-        <Routes>
-
-          {/* MAIN PAGE */}
-          <Route path="/" element={<Index />} />
-
-          {/* ROOM STATUS PAGE */}
-          <Route path="/room" element={<RoomStatus />} />
-
-          {/* OPTIONAL HOME PAGE — remove if you don’t have Home.tsx */}
-          {/* <Route path="/home" element={<Home />} /> */}
-
-          {/* 404 CATCH-ALL (must remain LAST) */}
-          <Route path="*" element={<NotFound />} />
-
-        </Routes>
-      </BrowserRouter>
+      {/* 🔥 FIX: PresenceProvider wraps the ENTIRE app */}
+      <PresenceProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/room" element={<RoomStatus />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </PresenceProvider>
 
     </TooltipProvider>
   </QueryClientProvider>
