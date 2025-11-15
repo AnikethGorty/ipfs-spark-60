@@ -170,16 +170,30 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background p-4">
       {/* Header */}
-      <Card className="mb-4 p-4 bg-card border-border">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gradient">IPFS Network Simulator</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Visual network topology editor with file transfer simulation
-            </p>
-          </div>
+                    <Card className="mb-4 p-4 bg-card border-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h1 className="text-3xl font-bold text-gradient">IPFS Network Simulator</h1>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Visual network topology editor with file transfer simulation
+                          </p>
+                        </div>
+              
+                        <div className="flex gap-2">
+                          <Button onClick={handleSaveSimulation}>
+                Save
+              </Button>
+              
+              <label>
+                <input
+                  type="file"
+                  accept=".json,.simnet.json"
+                  className="hidden"
+                  onChange={handleLoadSimulation}
+                />
+                <Button variant="outline">Load</Button>
+              </label>
 
-          <div className="flex gap-2">
             <Button
               variant={mode === 'simulation' ? 'default' : 'outline'}
               onClick={() => setMode('simulation')}
