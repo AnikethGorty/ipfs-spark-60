@@ -17,20 +17,13 @@ BROADCAST_INTERVAL = 2  # seconds
 # Get real WiFi IP (not virtual)
 # -----------------------------------------------------
 def get_real_ip():
-    bad_ifaces = ["Virtual", "VMware", "vEthernet", "Loopback", "Bluetooth", "WSL"]
-
     for name, addrs in psutil.net_if_addrs().items():
-        if any(bad in name for bad in bad_ifaces):
-            continue
-
-        for a in addrs:
-            if a.family.name == "AF_INET":
-                ip = a.address
-                if ip.startswith("169.254."):
-                    continue
-                return ip
-
+        if "Wi-Fi" in name or "WiFi" in name or "Wireless" in name:
+            for a in addrs:
+                if a.family.name == "AF_INET":
+                    return a.address
     return "127.0.0.1"
+
 
 
 IP = get_real_ip()
