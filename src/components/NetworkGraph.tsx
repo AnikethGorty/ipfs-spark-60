@@ -189,6 +189,19 @@ export const NetworkGraph = ({
      Connection creation
   ------------------------------------------- */
   const onConnect = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+    console.log("Clicked node:", node.id);
+
+    // 🔥 Set it as the selected source node
+    setSelectedSourceNode(node.id);
+
+    // Keep your existing logic
+    setSelectedNode(node.id);
+    setContextMenu({
+        x: _event.clientX,
+        y: _event.clientY,
+        nodeId: node.id,
+    });
     (params: Connection) => {
       if (!params.source || !params.target) return;
 
