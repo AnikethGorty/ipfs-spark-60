@@ -208,6 +208,38 @@ const Index = () => {
     }
   };
 
+  const handleLoadSimulation = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    // --- Validate ---
+    if (!Array.isArray(data.nodes) || !Array.isArray(data.connections)) {
+      toast.error("Invalid simulation file!");
+      return;
+    }
+
+    // --- Restore state ---
+    setNodes(data.nodes);
+    setConnections(data.connections);
+    setBlockchain(data.blockchain || []);
+
+    // Clear selections
+    setSelectedNode(null);
+    setSelectedConnection(null);
+    setSelectedSourceNode(null);
+
+    toast.success("Simulation loaded successfully!");
+  } catch (error) {
+    toast.error("Failed to load file");
+    console.error(error);
+  }
+};
+
+
   /* -----------------------------------------------------
         UI RENDER
   ----------------------------------------------------- */
