@@ -47,12 +47,14 @@ const Index = () => {
   const [blockchain, setBlockchain] = useState<Block[]>([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
-
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // 🔥 NEW — this stores the currently selected source node
+  // 🔥 NEW — This is the "auto-source" node for file transfers
   const [selectedSourceNode, setSelectedSourceNode] = useState<string | null>(null);
 
+  /* ------------------------------------------
+     Node / Connection Controls
+  ------------------------------------------- */
   const handleAddNode = useCallback((node: NetworkNode) => {
     setNodes(prev => [...prev, node]);
     toast.success(`Node "${node.label}" added`);
@@ -75,19 +77,16 @@ const Index = () => {
     setConnections(prev => prev.map(c => (c.id === connection.id ? connection : c)));
   }, []);
 
-  const simulateTransfer = async (
-    chunks: FileChunk[],
-    path: string[],
-    fileName: string
-  ) => {
+  /* ------------------------------------------
+     File Transfer Simulation
+  ------------------------------------------- */
+  const simulateTransfer = async (chunks: FileChunk[], path: string[], fileName: string) => {
     let blockNumber = blockchain.length;
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-
-      for (let j = 0; j < path.length - 1; j++) {
-        const from = path[j];
-        const to = path[j + 1];
+    for (const chunk of chunks) {
+      for (let i = 0; i < path.length - 1; i++) {
+        const from = path[i];
+        const to = path[i + 1];
 
         setNodes(prev =>
           prev.map(n =>
@@ -146,29 +145,27 @@ const Index = () => {
 
     try {
       const chunks = await chunkFile(file, chunkSize);
-      toast.success(`File chunked into ${chunks.length} chunks`);
 
       const path = findShortestPath(nodes, connections, sourceId, destId);
-
       if (path.length < 2) {
         toast.error('No path found between nodes');
         setIsSimulating(false);
         return;
       }
 
-      toast.info(`Path found: ${path.map(id => nodes.find(n => n.id === id)?.label || id).join(' → ')}`);
-
       await simulateTransfer(chunks, path, file.name);
 
       toast.success('File transfer completed!');
-    } catch (error) {
-      console.error('Transfer error:', error);
+    } catch {
       toast.error('Transfer failed');
     } finally {
       setIsSimulating(false);
     }
   };
 
+  /* ------------------------------------------
+     UI Layout
+  ------------------------------------------- */
   return (
     <div className="min-h-screen bg-background p-4">
       {/* Header */}
@@ -190,6 +187,7 @@ const Index = () => {
               <Activity className="h-4 w-4 mr-2" />
               Simulation Mode
             </Button>
+
             <Button
               variant={mode === 'real' ? 'default' : 'outline'}
               onClick={() => setMode('real')}
@@ -204,7 +202,8 @@ const Index = () => {
 
       {mode === 'simulation' ? (
         <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
-          {/* Left Panel - Controls */}
+
+          {/* Left Panel */}
           <div className="col-span-3 overflow-auto">
             <ControlPanel
               nodes={nodes}
@@ -218,8 +217,9 @@ const Index = () => {
             />
           </div>
 
-          {/* Center Panel - Network Graph */}
+          {/* Center Panel */}
           <div className="col-span-6">
+            {/* Pass selectedSourceNode into NetworkGraph */}
             <NetworkGraph
               nodes={nodes}
               connections={connections}
@@ -229,21 +229,19 @@ const Index = () => {
               setSelectedNode={setSelectedNode}
               selectedConnection={selectedConnection}
               setSelectedConnection={setSelectedConnection}
-
-              {/* 🔥 Pass selectedSourceNode into the graph */}
               selectedSourceNode={selectedSourceNode}
               setSelectedSourceNode={setSelectedSourceNode}
             />
           </div>
 
-          {/* Right Panel - File Transfer */}
+          {/* Right Panel */}
           <div className="col-span-3 flex flex-col gap-4 overflow-auto">
+
+            {/* File Transfer Panel with auto-updating source */}
             <FileTransferPanel
               nodes={nodes}
               onStartTransfer={handleStartTransfer}
               isSimulating={isSimulating}
-
-              {/* 🔥 FileTransferPanel will auto-update when you click a node */}
               selectedSourceNode={selectedSourceNode}
             />
 
